@@ -35,7 +35,7 @@ RUN npm i
 COPY --from=builder /app/dist ./dist
 
 # Copy CSV data files to the production image
-COPY src/data ./dist/data
+COPY docs/csv ./dist/data/csv
 
 # Expose the application port
 EXPOSE 4000

@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { CompanyService } from '../services/company.service';
 import { CsvDataService } from '../services/csvData.service';
 import { ExternalApiService } from '../services/externalApi.service';
-import { AdverseMediaService } from '../services/adverseMedia.service';
 import { SupabaseService } from '../services/supabase';
 import type { Tables } from '../types';
 
@@ -92,11 +91,10 @@ export class CompanyController {
       // Step B: Aggregate data from all sources in parallel
       let localData = null;
       let apiResults = null;
-      let aiResults = null;
       let localDataError = null;
 
       try {
-        [localData, apiResults, aiResults] = await Promise.all([
+        [localData, apiResults] = await Promise.all([
           // CSV Data lookup
           (async () => {
             try {
@@ -107,9 +105,7 @@ export class CompanyController {
             }
           })(),
           // External API checks
-          ExternalApiService.checkAll(registrationNumber, companyName),
-          // AI adverse media analysis
-          AdverseMediaService.analyzeReputation(companyName)
+          ExternalApiService.checkAll(registrationNumber, companyName)
         ]);
       } catch (error) {
         console.error('Error during parallel data aggregation:', error);
@@ -130,8 +126,7 @@ export class CompanyController {
       // Calculate overall risk level
       const overallRiskLevel = CompanyController.calculateOverallRisk(
         localData,
-        apiResults,
-        aiResults
+        apiResults
       );
 
       // Step C: Build complete risk profile
@@ -150,17 +145,17 @@ export class CompanyController {
         has_insolvency: localData.has_insolvency,
         insolvency_details: localData.proceeding_resolution_name,
         
-        // External API results
-        is_sanctioned: apiResults.sanctions.is_sanctioned,
-        sanction_sources: apiResults.sanctions.sources,
-        sanction_details: apiResults.sanctions.details,
-        is_pep: apiResults.pep_check.is_pep,
-        pep_details: apiResults.pep_check.details,
+        // External API results  
+        is_sanctioned: apiResults.is_sanctioned,
+        sanction_sources: apiResults.sanction_sources,
+        sanction_details: apiResults.sanction_details,
+        is_pep: false, // PEP check removed, focus on company sanctions
+        pep_details: null,
         
-        // AI Analysis
-        adverse_media_risk_score: aiResults.risk_score,
-        adverse_media_summary: aiResults.summary,
-        adverse_media_mentions: aiResults.negative_mentions,
+        // AI Analysis (disabled)
+        adverse_media_risk_score: 0,
+        adverse_media_summary: 'Adverse media check disabled',
+        adverse_media_mentions: 0,
         
         // Overall assessment
         overall_risk_level: overallRiskLevel,
@@ -201,8 +196,7 @@ export class CompanyController {
    */
   private static calculateOverallRisk(
     localData: any,
-    apiResults: any,
-    aiResults: any
+    apiResults: any
   ): string {
     let riskScore = 0;
 
@@ -213,13 +207,7 @@ export class CompanyController {
     if (localData.has_insolvency) riskScore += 40;
 
     // Sanctioned: +50 (critical)
-    if (apiResults.sanctions.is_sanctioned) riskScore += 50;
-
-    // PEP: +25
-    if (apiResults.pep_check.is_pep) riskScore += 25;
-
-    // Adverse media risk score (0-100, use as-is)
-    riskScore += aiResults.risk_score * 0.3; // Weight it at 30%
+    if (apiResults.is_sanctioned) riskScore += 50;
 
     // Poor tax rating: +20
     if (localData.rating && localData.rating.toLowerCase().includes('poor')) {
@@ -234,14 +222,15 @@ export class CompanyController {
   }
 
   /**
-   * Save risk profile to database
+   * Save risk profile to database with Priority 1 KYC/AML fields
    */
   private static async saveRiskProfile(submissionData: CompanyData, profile: RiskProfile): Promise<void> {
     const supabaseService = new SupabaseService();
     await supabaseService.signIn();
 
-    // Note: This assumes a company_risk_profiles table exists
-    // You may need to create this table in Supabase
+    // Get the full aggregate data to access Priority 1 fields
+    const localData = await CsvDataService.getInstance().getAggregateData(profile.registration_number);
+
     const { error } = await supabaseService.getClient()
       .from('company_risk_profiles')
       .insert({
@@ -251,6 +240,34 @@ export class CompanyController {
         profile_data: profile as any, // Store entire profile as JSON
         risk_level: profile.overall_risk_level,
         checked_at: profile.checked_at,
+        
+        // Existing fields
+        address: profile.address,
+        registration_date: profile.registered_date,
+        legal_form: profile.legal_form,
+        is_active: profile.is_active,
+        tax_rating: profile.tax_rating,
+        tax_status_explanation: profile.tax_explanation,
+        has_insolvency_history: profile.has_insolvency,
+        insolvency_details: profile.insolvency_details,
+        
+        // Priority 1 Registry fields
+        sepa: localData.sepa || null,
+        regtype_text: localData.regtype_text || null,
+        company_type_code: localData.type || null,
+        closed_status: localData.closed || null,
+        region: localData.region || null,
+        city: localData.city || null,
+        
+        // Priority 1 Tax rating field
+        tax_rating_updated_date: localData.rating_updated_date || null,
+        
+        // Priority 1 Insolvency fields
+        insolvency_started_date: localData.proceeding_started_on || null,
+        insolvency_ended_date: localData.proceeding_ended_on || null,
+        insolvency_form: localData.proceeding_form || null,
+        insolvency_type: localData.proceeding_type || null,
+        insolvency_court_name: localData.court_name || null,
       });
 
     if (error) {

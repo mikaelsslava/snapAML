@@ -1,11 +1,13 @@
-import { csvDataService } from './services/csvData.service';
+import { getCsvDataService } from './services/csvData.service';
 
 async function testCsvService() {
   try {
     console.log('Testing CsvDataService...\n');
 
-    // Wait a moment for initialization
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    const csvDataService = getCsvDataService();
+    
+    // Initialize the service
+    await csvDataService.init();
 
     // Check if service is ready
     console.log('Service ready:', csvDataService.isReady());
@@ -22,7 +24,7 @@ async function testCsvService() {
     
     // This will test the error handling for non-existent registry
     try {
-      const data = await csvDataService.getAggregateData('00000000000');
+      const data = csvDataService.getAggregateData('00000000000');
       console.log('Sample data:', JSON.stringify(data, null, 2));
     } catch (error) {
       console.log('Expected error for non-existent registration:', (error as Error).message);

@@ -36,6 +36,91 @@ export class AdverseMediaService {
     apiKey: process.env.ANTHROPIC_API_KEY,
   });
 
+  private static lastSearchTime: number = 0;
+  private static readonly MIN_SEARCH_INTERVAL = 5000; // 5 seconds between searches
+  private static searchAttempts: number = 0;
+  private static readonly MAX_DAILY_SEARCHES = 50; // Limit daily searches
+
+  /**
+   * Sleep for specified milliseconds
+   */
+  private static async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Check if search is available (rate limiting check)
+   */
+  private static canPerformSearch(): boolean {
+    // Reset counter if it's a new day
+    const now = Date.now();
+    const timeSinceLastSearch = now - this.lastSearchTime;
+    
+    // If more than 24 hours since last search, reset counter
+    if (timeSinceLastSearch > 86400000) {
+      this.searchAttempts = 0;
+    }
+
+    return this.searchAttempts < this.MAX_DAILY_SEARCHES;
+  }
+
+  /**
+   * Perform DuckDuckGo search with rate limiting and retry logic
+   */
+  private static async performSearch(searchQuery: string, maxRetries: number = 2): Promise<any> {
+    // Check if we've hit the daily limit
+    if (!this.canPerformSearch()) {
+      console.warn('⚠️ Daily search limit reached. Skipping adverse media search.');
+      throw new Error('Daily search limit reached');
+    }
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        // Ensure minimum time between searches
+        const now = Date.now();
+        const timeSinceLastSearch = now - this.lastSearchTime;
+        if (timeSinceLastSearch < this.MIN_SEARCH_INTERVAL) {
+          const waitTime = this.MIN_SEARCH_INTERVAL - timeSinceLastSearch;
+          console.log(`⏳ Rate limiting: waiting ${waitTime}ms before search...`);
+          await this.sleep(waitTime);
+        }
+
+        // Add additional random delay to appear more human-like
+        const randomDelay = Math.floor(Math.random() * 2000) + 1000; // 1-3 seconds
+        await this.sleep(randomDelay);
+
+        console.log(`🔍 Performing DuckDuckGo search (attempt ${attempt}/${maxRetries})...`);
+        
+        const searchResults = await search(searchQuery, {
+          safeSearch: SafeSearchType.OFF,
+          time: 'y', // Past year
+          locale: 'en-us'
+        });
+
+        this.lastSearchTime = Date.now();
+        this.searchAttempts++;
+        console.log(`✅ Search completed successfully (${this.searchAttempts} searches today)`);
+        return searchResults;
+
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.warn(`⚠️ Search attempt ${attempt} failed: ${errorMessage}`);
+
+        if (attempt < maxRetries) {
+          // Longer exponential backoff: 10s, 20s
+          const backoffTime = 10000 * Math.pow(2, attempt - 1);
+          console.log(`⏳ Retrying in ${backoffTime}ms...`);
+          await this.sleep(backoffTime);
+        } else {
+          // On final failure, log and throw
+          console.error('❌ All search attempts exhausted. DuckDuckGo may be rate limiting this IP.');
+          console.log('💡 Tip: Consider using a proper search API or implementing a proxy rotation system.');
+          throw error;
+        }
+      }
+    }
+  }
+
   /**
    * Search for adverse media using DuckDuckGo and analyze with Claude
    * @param companyName - Company name to analyze
@@ -48,13 +133,8 @@ export class AdverseMediaService {
       // Construct search query with financial crime terms
       const searchQuery = `"${companyName}" ("fraud" OR "money laundering" OR "sanction")`;
       
-      console.log('Perform DuckDuckGo search')
-      // Perform DuckDuckGo search
-      const searchResults = await search(searchQuery, {
-        safeSearch: SafeSearchType.OFF,
-        time: 'y', // Past year
-        locale: 'en-us'
-      });
+      // Perform DuckDuckGo search with rate limiting and retry
+      const searchResults = await this.performSearch(searchQuery);
 
       // Extract top 5 results with title and snippet
       const top5Results = searchResults.results.slice(0, 5);
@@ -70,12 +150,12 @@ export class AdverseMediaService {
       }
 
       // Prepare snippets for AI analysis
-      const snippets = top5Results.map((result, index) => 
+      const snippets = top5Results.map((result: any, index: number) => 
         `${index + 1}. Title: ${result.title}\n   Snippet: ${result.description}`
       ).join('\n\n');
 
       // Extract URLs
-      const urls = top5Results.map(result => result.url);
+      const urls = top5Results.map((result: any) => result.url);
 
       // Send to Claude for structured JSON analysis
       const prompt = `Analyze these search snippets for the company '${companyName}'. 
