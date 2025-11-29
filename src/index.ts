@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import companyRoutes from './routes/company';
+import { CsvDataService } from './services/csvData.service';
 
 // Load environment variables
 dotenv.config();
@@ -40,10 +41,24 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
-  console.log(`Company endpoint: http://localhost:${PORT}/api/company`);
-});
+// Initialize CSV Data Service and start server
+async function startServer() {
+  try {
+    console.log('Initializing CSV Data Service...');
+    await CsvDataService.getInstance().init();
+    console.log('CSV Data Service initialized successfully');
+
+    app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
+      console.log(`Health check: http://localhost:${PORT}/health`);
+      console.log(`Company endpoint: http://localhost:${PORT}/api/company`);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
+
+startServer();
 
 export default app;
