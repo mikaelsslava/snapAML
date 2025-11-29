@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import { CompanyService } from '../services/company.service';
-import { CsvDataService } from '../services/CsvDataService';
-import { ExternalApiService } from '../services/ExternalApiService';
-import { AdverseMediaService } from '../services/AdverseMediaService';
+import { CsvDataService } from '../services/csvData.service';
+import { ExternalApiService } from '../services/externalApi.service';
+import { AdverseMediaService } from '../services/adverseMedia.service';
 import { SupabaseService } from '../services/supabase';
 import type { Tables } from '../types';
 
@@ -112,7 +112,6 @@ export class CompanyController {
           AdverseMediaService.analyzeReputation(companyName)
         ]);
       } catch (error) {
-        // @ts-expect-error
         console.error('Error during parallel data aggregation:', error);
         return res.status(500).json({
           success: false,
@@ -168,11 +167,12 @@ export class CompanyController {
         checked_at: new Date().toISOString(),
       };
 
+      console.log('Generated risk profile:', riskProfile);
+
       // Step D: Save to database
       try {
-        await CompanyController.saveRiskProfile(riskProfile);
+        await CompanyController.saveRiskProfile(submissionData, riskProfile);
       } catch (error) {
-        // @ts-expect-error
         console.error('Failed to save risk profile:', error);
         // Continue even if save fails - we can still return the data
       }
@@ -236,7 +236,7 @@ export class CompanyController {
   /**
    * Save risk profile to database
    */
-  private static async saveRiskProfile(profile: RiskProfile): Promise<void> {
+  private static async saveRiskProfile(submissionData: CompanyData, profile: RiskProfile): Promise<void> {
     const supabaseService = new SupabaseService();
     await supabaseService.signIn();
 
@@ -245,15 +245,15 @@ export class CompanyController {
     const { error } = await supabaseService.getClient()
       .from('company_risk_profiles')
       .insert({
+        submission_id: submissionData.id,
         registration_number: profile.registration_number,
         company_name: profile.company_name,
-        profile_data: profile, // Store entire profile as JSON
+        profile_data: profile as any, // Store entire profile as JSON
         risk_level: profile.overall_risk_level,
         checked_at: profile.checked_at,
       });
 
     if (error) {
-      // @ts-expect-error
       console.error('Error saving risk profile:', error);
       throw new Error('Failed to save risk profile to database');
     }
@@ -280,7 +280,6 @@ export class CompanyController {
   }
 
   private static handleError(error: any, res: Response): Response {
-    // @ts-expect-error
     console.error('Controller error:', error);
 
     // Handle known service errors

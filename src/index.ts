@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import companyRoutes from './routes/company';
-import { CsvDataService } from './services/CsvDataService';
+import { CsvDataService } from './services/csvData.service';
 
 // Load environment variables
 dotenv.config();

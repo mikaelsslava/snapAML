@@ -16,7 +16,6 @@ export class CompanyService {
       .select('*')
       .eq('company_registration_number', registrationNumber)
       .single();
-
       console.log('data', data)
 
     if (error) {

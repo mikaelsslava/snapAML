@@ -14,6 +14,86 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_risk_profiles: {
+        Row: {
+          address: string | null
+          adverse_media_links: Json | null
+          adverse_media_summary: string | null
+          checked_at: string | null
+          company_name: string | null
+          has_insolvency_history: boolean | null
+          id: string
+          insolvency_details: string | null
+          is_active: boolean | null
+          legal_form: string | null
+          profile_data: Json | null
+          registration_date: string | null
+          registration_number: string
+          risk_level: string | null
+          sanctions_details: Json | null
+          sanctions_match: boolean | null
+          submission_id: string
+          tax_rating: string | null
+          tax_status_explanation: string | null
+          vies_address: string | null
+          vies_valid: boolean | null
+        }
+        Insert: {
+          address?: string | null
+          adverse_media_links?: Json | null
+          adverse_media_summary?: string | null
+          checked_at?: string | null
+          company_name?: string | null
+          has_insolvency_history?: boolean | null
+          id?: string
+          insolvency_details?: string | null
+          is_active?: boolean | null
+          legal_form?: string | null
+          profile_data?: Json | null
+          registration_date?: string | null
+          registration_number: string
+          risk_level?: string | null
+          sanctions_details?: Json | null
+          sanctions_match?: boolean | null
+          submission_id: string
+          tax_rating?: string | null
+          tax_status_explanation?: string | null
+          vies_address?: string | null
+          vies_valid?: boolean | null
+        }
+        Update: {
+          address?: string | null
+          adverse_media_links?: Json | null
+          adverse_media_summary?: string | null
+          checked_at?: string | null
+          company_name?: string | null
+          has_insolvency_history?: boolean | null
+          id?: string
+          insolvency_details?: string | null
+          is_active?: boolean | null
+          legal_form?: string | null
+          profile_data?: Json | null
+          registration_date?: string | null
+          registration_number?: string
+          risk_level?: string | null
+          sanctions_details?: Json | null
+          sanctions_match?: boolean | null
+          submission_id?: string
+          tax_rating?: string | null
+          tax_status_explanation?: string | null
+          vies_address?: string | null
+          vies_valid?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_risk_profiles_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "kyb_submissions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       kyb_submissions: {
         Row: {
           applicant_email: string | null

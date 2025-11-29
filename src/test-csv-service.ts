@@ -1,4 +1,4 @@
-import { csvDataService } from './services/CsvDataService';
+import { csvDataService } from './services/csvData.service';
 
 async function testCsvService() {
   try {

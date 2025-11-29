@@ -99,7 +99,7 @@ export class CsvDataService {
    */
   private async loadRegistryData(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const filePath = path.join(__dirname, '../data/csv/registry.csv');
+      const filePath = path.join(__dirname, '../../data/csv/registry.csv');
 
       fs.createReadStream(filePath)
         .pipe(
@@ -138,7 +138,7 @@ export class CsvDataService {
    */
   private async loadTaxData(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const filePath = path.join(__dirname, '../data/csv/taxpayer_rating.csv');
+      const filePath = path.join(__dirname, '../../data/csv/taxpayer_rating.csv');
 
       fs.createReadStream(filePath)
         .pipe(
@@ -175,7 +175,7 @@ export class CsvDataService {
    */
   private async loadInsolvencyData(): Promise<void> {
     return new Promise((resolve, reject) => {
-      const filePath = path.join(__dirname, '../data/csv/insolvency.csv');
+      const filePath = path.join(__dirname, '../../data/csv/insolvency.csv');
 
       fs.createReadStream(filePath)
         .pipe(
@@ -213,6 +213,8 @@ export class CsvDataService {
    */
   public getAggregateData(regNumber: string): AggregateData {
     this.ensureInitialized();
+
+    console.log(`Looking up aggregate data for regNumber: ${regNumber}`);
 
     const registryData = this.registryMap.get(regNumber);
     if (!registryData) {
