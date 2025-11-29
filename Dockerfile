@@ -1,47 +1,45 @@
-# Multi-stage build for optimized image size
+# syntax = docker/dockerfile:1
 
-# Stage 1: Build stage
-FROM node:20-alpine AS builder
+# Adjust NODE_VERSION as desired
+ARG NODE_VERSION=20.18.0
+FROM node:${NODE_VERSION}-slim AS base
 
-# Set working directory
+LABEL fly_launch_runtime="Node.js"
+
+# Node.js app lives here
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Set production environment
+ENV NODE_ENV="production"
 
-# Install dependencies
-RUN npm i
 
-# Copy source code
-COPY src ./src
+# Throw-away build stage to reduce size of final image
+FROM base AS build
 
-# Build the TypeScript code
+# Install packages needed to build node modules
+RUN apt-get update -qq && \
+    apt-get install --no-install-recommends -y build-essential node-gyp pkg-config python-is-python3
+
+# Install node modules
+COPY package-lock.json package.json ./
+RUN npm ci --include=dev
+
+# Copy application code
+COPY . .
+
+# Build application
 RUN npm run build
 
-# Stage 2: Production stage
-FROM node:20-alpine
+# Remove development dependencies
+RUN npm prune --omit=dev
 
-# Set working directory
-WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Final stage for app image
+FROM base
 
-# Install dependencies
-RUN npm i
+# Copy built application
+COPY --from=build /app /app
 
-# Copy built application from builder stage
-COPY --from=builder /app/dist ./dist
-
-# Copy CSV data files to the production image
-COPY docs/csv ./dist/data/csv
-
-# Expose the application port
-EXPOSE 4000
-
-# Set the user to non-root for security
-USER node
-
-# Start the application
-CMD ["npm", "start"]
+# Start the server by default, this can be overwritten at runtime
+EXPOSE 3000
+CMD [ "npm", "run", "start" ]

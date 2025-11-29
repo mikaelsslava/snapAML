@@ -1,3 +1,9 @@
+/.git
+/node_modules
+.dockerignore
+.env
+Dockerfile
+fly.toml
 # Dependencies
 node_modules
 npm-debug.log
