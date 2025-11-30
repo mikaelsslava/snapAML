@@ -25,11 +25,11 @@ interface RiskProfile {
   address: string;
   registered_date: string;
   legal_form: string;
-  is_active: boolean;
+  is_active?: boolean;
   terminated_date: string | null;
   tax_rating: string | null;
   tax_explanation: string | null;
-  has_insolvency: boolean;
+  has_insolvency?: boolean;
   insolvency_details: string | null;
   
   // External API results
@@ -80,7 +80,7 @@ export class CompanyController {
       try {
         submissionData = await companyService.getCompanyByRegistrationNumber(registrationNumber);
       } catch (error) {
-        return res.status(404).json({
+        return res.status(400).json({
           success: false,
           error: 'Company submission not found in database'
         } as ApiResponse<null>);
@@ -116,12 +116,12 @@ export class CompanyController {
       }
 
       // If company not found in Registry CSV, return error
-      if (!localData) {
-        return res.status(404).json({
-          success: false,
-          error: localDataError || 'Company not found in Latvian Registry'
-        } as ApiResponse<null>);
-      }
+      // if (!localData) {
+      //   return res.status(404).json({
+      //     success: false,
+      //     error: localDataError || 'Company not found in Latvian Registry'
+      //   } as ApiResponse<null>);
+      // }
 
       // Calculate overall risk level
       const overallRiskLevel = CompanyController.calculateOverallRisk(
@@ -135,15 +135,13 @@ export class CompanyController {
         company_name: companyName,
         
         // Local CSV data
-        address: localData.address,
-        registered_date: localData.registered,
-        legal_form: localData.type_text,
-        is_active: localData.is_active,
-        terminated_date: localData.terminated || null,
-        tax_rating: localData.rating,
-        tax_explanation: localData.explanation,
-        has_insolvency: localData.has_insolvency,
-        insolvency_details: localData.proceeding_resolution_name,
+        address: localData?.address || '',
+        registered_date: localData?.registered || '',
+        legal_form: localData?.type_text || '',
+        terminated_date: localData?.terminated || null || '',
+        tax_rating: localData?.rating || '',
+        tax_explanation: localData?.explanation || '',
+        insolvency_details: localData?.proceeding_resolution_name || '',
         
         // External API results  
         is_sanctioned: apiResults.is_sanctioned,
@@ -161,6 +159,13 @@ export class CompanyController {
         overall_risk_level: overallRiskLevel,
         checked_at: new Date().toISOString(),
       };
+
+      if (localData?.is_active !== undefined) {
+        riskProfile.is_active = localData.is_active;
+      }
+      if (localData?.has_insolvency !== undefined) {
+        riskProfile.has_insolvency = localData?.has_insolvency,
+      }
 
       console.log('Generated risk profile:', riskProfile);
 
