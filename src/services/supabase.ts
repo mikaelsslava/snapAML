@@ -4,9 +4,7 @@ import type { Database } from '../types';
 export class SupabaseService {
   private client: SupabaseClient<Database>;
 
-  
   constructor() {
-    console.log('invoke')
     const SUPABASE_URL = process.env.SUPABASE_URL;
     const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
 
