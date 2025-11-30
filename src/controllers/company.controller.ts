@@ -161,7 +161,7 @@ export class CompanyController {
       };
 
       if (localData?.is_active !== undefined) {
-        riskProfile.is_active = localData.is_active;
+        riskProfile.is_active = localData?.is_active;
       }
       if (localData?.has_insolvency !== undefined) {
         riskProfile.has_insolvency = localData?.has_insolvency
@@ -206,16 +206,16 @@ export class CompanyController {
     let riskScore = 0;
 
     // Terminated companies: +30
-    if (!localData.is_active) riskScore += 30;
+    if (!localData?.is_active) riskScore += 30;
 
     // Has insolvency: +40
-    if (localData.has_insolvency) riskScore += 40;
+    if (localData?.has_insolvency) riskScore += 40;
 
     // Sanctioned: +50 (critical)
     if (apiResults.is_sanctioned) riskScore += 50;
 
     // Poor tax rating: +20
-    if (localData.rating && localData.rating.toLowerCase().includes('poor')) {
+    if (localData?.rating && localData?.rating.toLowerCase().includes('poor')) {
       riskScore += 20;
     }
 
@@ -257,22 +257,22 @@ export class CompanyController {
         insolvency_details: profile.insolvency_details,
         
         // Priority 1 Registry fields
-        sepa: localData.sepa || null,
-        regtype_text: localData.regtype_text || null,
-        company_type_code: localData.type || null,
-        closed_status: localData.closed || null,
-        region: localData.region || null,
-        city: localData.city || null,
+        sepa: localData?.sepa || null,
+        regtype_text: localData?.regtype_text || null,
+        company_type_code: localData?.type || null,
+        closed_status: localData?.closed || null,
+        region: localData?.region || null,
+        city: localData?.city || null,
         
         // Priority 1 Tax rating field
-        tax_rating_updated_date: localData.rating_updated_date || null,
+        tax_rating_updated_date: localData?.rating_updated_date || null,
         
         // Priority 1 Insolvency fields
-        insolvency_started_date: localData.proceeding_started_on || null,
-        insolvency_ended_date: localData.proceeding_ended_on || null,
-        insolvency_form: localData.proceeding_form || null,
-        insolvency_type: localData.proceeding_type || null,
-        insolvency_court_name: localData.court_name || null,
+        insolvency_started_date: localData?.proceeding_started_on || null,
+        insolvency_ended_date: localData?.proceeding_ended_on || null,
+        insolvency_form: localData?.proceeding_form || null,
+        insolvency_type: localData?.proceeding_type || null,
+        insolvency_court_name: localData?.court_name || null,
       });
 
     if (error) {
