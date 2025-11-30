@@ -164,7 +164,7 @@ export class CompanyController {
         riskProfile.is_active = localData.is_active;
       }
       if (localData?.has_insolvency !== undefined) {
-        riskProfile.has_insolvency = localData?.has_insolvency,
+        riskProfile.has_insolvency = localData?.has_insolvency
       }
 
       console.log('Generated risk profile:', riskProfile);
